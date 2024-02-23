@@ -25,6 +25,8 @@ class Database
     def write_object(oid, content)
         # example object_path = /Users/maria/rugit/.git/objects/cc/628ccd10742baea8241c5924df992b5c019f71
         object_path = @pathname.join(oid[0..1], oid[2..-1])
+        return if File.exist?(object_path)
+
         dirname = object_path.dirname
         temp_path = dirname.join(generate_temp_name)
 
