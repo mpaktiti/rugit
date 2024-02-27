@@ -48,8 +48,11 @@ when "commit"
     entries = workspace.list_files.map do |path|
         data = workspace.read_file(path)
         blob = Blob.new(data)
+
         database.store(blob)
-        Entry.new(path, blob.oid)
+
+        stat = workspace.stat_file(path)
+        Entry.new(path, blob.oid, stat)
     end
 
     tree = Tree.new(entries)
