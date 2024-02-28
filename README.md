@@ -11,4 +11,5 @@ export PATH="$PWD/bin:$PATH"
 Available commands:
 
 - `rugit init`
+- `rugit add`
 - `rugit commit`

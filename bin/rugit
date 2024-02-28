@@ -8,6 +8,7 @@ require_relative "../lib/database/commit"
 require_relative "../lib/database"
 require_relative "../lib/database/blob"
 require_relative "../lib/entry"
+require_relative "../lib/index"
 require_relative "../lib/refs"
 require_relative "../lib/database/tree"
 require_relative "../lib/workspace"
@@ -36,6 +37,27 @@ when "init"
     end
 
     puts "Initialized empty Rugit repository in #{ git_path }"
+    exit 0
+when "add"
+    root_path = Pathname.new(Dir.getwd)
+    git_path = root_path.join(".git")
+
+    workspace = Workspace.new(root_path)
+    database = Database.new(git_path.join("objects"))
+    index = Index.new(git_path.join("index"))
+
+    path = Pathname.new(ARGV.first)
+    data = workspace.read_file(path)
+    stat = workspace.stat_file(path)
+
+    # write object to database
+    blob = Database::Blob.new(data)
+    database.store(blob)
+
+    # add object to index
+    index.add(path, blob.oid, stat)
+    index.write_updates
+
     exit 0
 when "commit"
     root_path = Pathname.new(Dir.getwd)
@@ -67,9 +89,7 @@ when "commit"
 
     commit = Database::Commit.new(parent, root.oid, author, message)
     database.store(commit)
-    puts "breakpoint 4"
     refs.update_head(commit.oid)
-    puts "breakpoint 5"
 
     is_root = parent.nil? ? "(root-commit) " : ""
     puts "[#{ is_root}#{ commit.oid }] #{ message.lines.first }"
