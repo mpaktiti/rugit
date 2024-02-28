@@ -1,8 +1,6 @@
 require "digest/sha1"
 require "zlib"
 
-require_relative "./blob"
-
 TEMP_CHARS = ("a".."z").to_a + ("A".."Z").to_a + ("0".."9").to_a
 
 # Manages the files in .git/objects
