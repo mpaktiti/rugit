@@ -1,3 +1,5 @@
+require_relative "./lockfile"
+
 class Refs
     LockDenied = Class.new(StandardError)
 

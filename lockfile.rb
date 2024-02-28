@@ -18,9 +18,9 @@ class Lockfile
         true
     rescue Errno::EEXIST
         false
-    rescue Errno:ENOENT => error
+    rescue Errno::ENOENT => error
         raise MissingParent, error.message
-    rescue Errno:EACCES => error
+    rescue Errno::EACCES => error
         raise NoPermission, error.message
     end
 
@@ -29,7 +29,7 @@ class Lockfile
         @lock.write(string)
     end
 
-    def commit(string)
+    def commit()
         raise_on_stale_lock
         @lock.close
         File.rename(@lock_path, @file_path)
@@ -41,5 +41,6 @@ class Lockfile
     def raise_on_stale_lock
         unless @lock
             raise StaleLock, "Not holding lock on file: #{ lock_path }"
+        end
     end
 end
