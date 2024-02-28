@@ -3,13 +3,13 @@
 require "fileutils"
 require "pathname"
 
-require_relative "./author"
-require_relative "./commit"
-require_relative "./database"
-require_relative "./entry"
-require_relative "./refs"
-require_relative "./tree"
-require_relative "./workspace"
+require_relative "../author"
+require_relative "../commit"
+require_relative "../database"
+require_relative "../entry"
+require_relative "../refs"
+require_relative "../tree"
+require_relative "../workspace"
 
 # get the first item from the command line arguments
 command = ARGV.shift
@@ -55,9 +55,8 @@ when "commit"
         Entry.new(path, blob.oid, stat)
     end
 
-    tree = Tree.new(entries)
-    database.store(tree)
-    # puts "tree: #{ tree.oid }"
+    root = Tree.build(entries)
+    root.traverse { |tree| database.store(tree) }
 
     parent = refs.read_head
     name = ENV.fetch("GIT_AUTHOR_NAME")
@@ -65,12 +64,11 @@ when "commit"
     author = Author.new(name, email, Time.now)
     message = $stdin.read
 
-    commit = Commit.new(parent, tree.oid, author, message)
+    commit = Commit.new(parent, root.oid, author, message)
     database.store(commit)
+    puts "breakpoint 4"
     refs.update_head(commit.oid)
-    # File.open(.join("HEAD"), File::WRONLY | File::CREAT) do |file|
-    #     file.puts(commit.oid)
-    # end
+    puts "breakpoint 5"
 
     is_root = parent.nil? ? "(root-commit) " : ""
     puts "[#{ is_root}#{ commit.oid }] #{ message.lines.first }"
