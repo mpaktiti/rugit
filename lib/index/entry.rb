@@ -28,6 +28,10 @@ class Index
             )
         end
 
+        def key
+            path
+        end
+
         def to_s
             string = to_a.pack(ENTRY_FORMAT)
             string.concat("\0") until string.bytesize % ENTRY_BLOCK == 0
