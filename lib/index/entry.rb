@@ -3,9 +3,6 @@ class Index
     EXECUTABLE_MODE = 0100755
     MAX_PATH_SIZE = 0xfff
 
-    ENTRY_FORMAT = "N10H40nZ*"
-    ENTRY_BLOCK = 8
-
     # Fields that appear in a .git/index entry
     entry_fields = [
         :ctime, :ctime_nsec,
@@ -26,6 +23,10 @@ class Index
                 stat.dev, stat.ino, mode, stat.uid, stat.gid, stat.size,
                 oid, flags, path
             )
+        end
+
+        def self.parse(data)
+            Entry.new(*data.unpack(ENTRY_FORMAT))
         end
 
         def key

@@ -29,10 +29,19 @@ class Lockfile
         @lock.write(string)
     end
 
-    def commit()
+    def commit
         raise_on_stale_lock
+
         @lock.close
         File.rename(@lock_path, @file_path)
+        @lock = nil
+    end
+
+    def rollback
+        raise_on_stale_lock
+
+        @lock.close
+        File.unlink(@lock_path)
         @lock = nil
     end
 
