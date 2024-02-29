@@ -1,3 +1,5 @@
+require "pathname"
+
 class Index
     REGULAR_MODE = 0100644 # the leading 0 indicates an octal number
     EXECUTABLE_MODE = 0100755
@@ -38,5 +40,14 @@ class Index
             string.concat("\0") until string.bytesize % ENTRY_BLOCK == 0
             string
         end
+
+        def parent_directories
+            Pathname.new(path).descend.to_a[0..-2]
+        end
+
+        def basename
+            Pathname.new(path).basename
+        end
+
     end
 end
