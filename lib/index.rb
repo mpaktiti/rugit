@@ -19,6 +19,7 @@ class Index
     def initialize(pathname)
         @lockfile = Lockfile.new(pathname)
         @pathname = pathname
+        clear
     end
 
     def clear
