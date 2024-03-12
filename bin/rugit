@@ -49,20 +49,26 @@ when "add"
     # load the existing index into memory
     index.load_for_update
 
-    ARGV.each do |path|
-        path = Pathname.new(File.expand_path(path))
-
-        workspace.list_files(path).each do |pathname|
-            data = workspace.read_file(pathname)
-            stat = workspace.stat_file(pathname)
-
-            # write object to database
-            blob = Database::Blob.new(data)
-            database.store(blob)
-
-            # add object to index
-            index.add(pathname, blob.oid, stat)
+    # read all paths to be added, error out if any does not exist
+    begin
+        paths = ARGV.flat_map do |path|
+            path = Pathname.new(File.expand_path(path))
+            workspace.list_files(path)
         end
+    rescue Workspace::MissingFile => error
+        $stderr.puts "fatal: #{ error.message }"
+        index.release_lock
+        exit 128
+    end
+
+    paths.each do |path|
+        data = workspace.read_file(pathname)
+        stat = workspace.stat_file(pathname)
+
+        # write object to database and add to index
+        blob = Database::Blob.new(data)
+        database.store(blob)
+        index.add(pathname, blob.oid, stat)
     end
 
     index.write_updates

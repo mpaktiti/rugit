@@ -148,4 +148,8 @@ class Index
     ensure
         file&.close
     end
+
+    def release_lock
+        @lockfile.rollback
+    end
 end
