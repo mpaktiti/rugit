@@ -3,14 +3,13 @@
 require "fileutils"
 require "pathname"
 
-require_relative "../lib/database/author"
-require_relative "../lib/database/commit"
 require_relative "../lib/database"
+require_relative "../lib/database/author"
 require_relative "../lib/database/blob"
-require_relative "../lib/entry"
-require_relative "../lib/index"
-require_relative "../lib/refs"
+require_relative "../lib/database/commit"
 require_relative "../lib/database/tree"
+require_relative "../lib/entry"
+require_relative "../lib/repository"
 require_relative "../lib/workspace"
 
 # get the first item from the command line arguments
@@ -40,15 +39,11 @@ when "init"
     exit 0
 when "add"
     root_path = Pathname.new(Dir.getwd)
-    git_path = root_path.join(".git")
-
-    workspace = Workspace.new(root_path)
-    database = Database.new(git_path.join("objects"))
-    index = Index.new(git_path.join("index"))
+    repo = Repository.new(root_path.join(".git"))
 
     # load the existing index into memory
     begin
-        index.load_for_update
+        repo.index.load_for_update
     rescue Lockfile::LockDenied => error
         $stderr.puts <<~ERROR
             fatal: #{ error.message }
@@ -65,55 +60,51 @@ when "add"
     begin
         paths = ARGV.flat_map do |path|
             path = Pathname.new(File.expand_path(path))
-            workspace.list_files(path)
+            repo.workspace.list_files(path)
         end
     rescue Workspace::MissingFile => error
         $stderr.puts "fatal: #{ error.message }"
-        index.release_lock
+        repo.index.release_lock
         exit 128
     end
 
     begin
         paths.each do |path|
-            data = workspace.read_file(pathname)
-            stat = workspace.stat_file(pathname)
+            data = repo.workspace.read_file(path)
+            stat = repo.workspace.stat_file(path)
 
             # write object to database and add to index
             blob = Database::Blob.new(data)
-            database.store(blob)
-            index.add(pathname, blob.oid, stat)
+            repo.database.store(blob)
+            repo.index.add(path, blob.oid, stat)
         end
     rescue Workspace::NoPermission => error
         $stderr.puts "error: #{ error.message }"
         $stderr.puts "fatal: adding files failed"
-        index.release_lock
+        repo.index.release_lock
         exit 128
     end
 
-    index.write_updates
+    repo.index.write_updates
     exit 0
 when "commit"
     root_path = Pathname.new(Dir.getwd)
-    git_path = root_path.join(".git")
+    repo = Repository.new(root_path.join(".git"))
 
-    database = Database.new(git_path.join("objects"))
-    index = Index.new(git_path.join("index"))
-    refs = Refs.new(git_path)
+    repo.index.load
 
-    index.load
+    root = Database::Tree.build(repo.index.each_entry)
+    root.traverse { |tree| repo.database.store(tree) }
 
-    root = Database::Tree.build(index.each_entry)
-    root.traverse { |tree| database.store(tree) }
-
-    parent = refs.read_head
+    parent = repo.refs.read_head
     name = ENV.fetch("GIT_AUTHOR_NAME")
     email = ENV.fetch("GIT_AUTHOR_EMAIL")
     author = Database::Author.new(name, email, Time.now)
     message = $stdin.read
 
     commit = Database::Commit.new(parent, root.oid, author, message)
-    database.store(commit)
-    refs.update_head(commit.oid)
+    repo.database.store(commit)
+    repo.refs.update_head(commit.oid)
 
     is_root = parent.nil? ? "(root-commit) " : ""
     puts "[#{ is_root}#{ commit.oid }] #{ message.lines.first }"
