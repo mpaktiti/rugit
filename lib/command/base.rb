@@ -27,5 +27,9 @@ module Command
         def puts(string)
             @stdout.puts(string)
         end
+
+        def repo
+            @repo ||= Repository.new(Pathname.new(@dir).join(".git"))
+        end
     end
 end

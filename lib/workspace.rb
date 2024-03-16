@@ -24,12 +24,12 @@ class Workspace
     def read_file(path)
         File.read(@pathname.join(path))
     rescue Errno::EACCES
-        raise NoPermission, "open('#{ path }'): Permision denied"
+        raise NoPermission, "open('#{ path }'): Permission denied"
     end
 
     def stat_file(path)
         File.stat(@pathname.join(path))
     rescue Errno::EACCES
-        raise NoPermission, "stat('#{ path }'): Permision denied"
+        raise NoPermission, "stat('#{ path }'): Permission denied"
     end
 end

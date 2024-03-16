@@ -10,7 +10,7 @@ module Command
             path = @args.fetch(0, @dir)
 
             # convert relative path to absolute
-            root_path = base.expanded_pathname(path)
+            root_path = expanded_pathname(path)
 
             git_path = root_path.join(".git")
 
