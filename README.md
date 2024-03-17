@@ -13,5 +13,6 @@ Available commands:
 - `rugit init`
 - `rugit add`
 - `rugit commit`
+- `rugit status`
 
 Run tests: `rake`
