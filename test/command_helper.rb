@@ -28,12 +28,29 @@ module CommandHelper
         File.open(path, flags) { |file| file.write(contents) }
     end
 
+    def set_env(key, value)
+        @env ||= {}
+        @env[key] = value
+    end
+
+    def set_stdin(string)
+        @stdin = StringIO.new(string)
+    end
+
     def rugit_cmd(*argv)
-        @stdin = StringIO.new
+        @env ||= {}
+        @stdin ||= StringIO.new
         @stdout = StringIO.new
         @stderr = StringIO.new
 
-        @cmd = Command.execute(repo_path.to_s, {}, argv, @stdin, @stdout, @stderr)
+        @cmd = Command.execute(repo_path.to_s, @env, argv, @stdin, @stdout, @stderr)
+    end
+
+    def commit(message)
+        set_env("GIT_AUTHOR_NAME", "Maria Paktiti")
+        set_env("GIT_AUTHOR_EMAIL", "author@example.com")
+        set_stdin(message)
+        rugit_cmd("commit")
     end
 
     def make_executable(name)
@@ -59,5 +76,9 @@ module CommandHelper
     def assert_output(stream, message)
         stream.rewind
         assert_equal(message, stream.read)
+    end
+
+    def mkdir(name)
+        FileUtils.mkdir_p(repo_path.join(name))
     end
 end
