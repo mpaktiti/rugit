@@ -10,15 +10,27 @@ class Database
     end
 
     def store(object)
-        string = object.to_s.force_encoding(Encoding::ASCII_8BIT)
-        content = "#{ object.type } #{ string.bytesize }\0#{ string}"
-        # "%s %d\0%s" % [object.type, string.bytesize, string]
+        content = serialize_object(object)
+        object.oid = hash_content(content)
 
-        object.oid = Digest::SHA1.hexdigest(content)
         write_object(object.oid, content)
     end
 
+    def hash_object(object)
+        hash_content(serialize_object(object))
+    end
+
     private
+
+    def serialize_object(object)
+        string = object.to_s.force_encoding(Encoding::ASCII_8BIT)
+        "#{ object.type } #{ string.bytesize }\0#{ string }"
+        # "%s %d\0%s" % [object.type, string.bytesize, string]
+    end
+
+    def hash_content(content)
+        Digest::SHA1.hexdigest(content)
+    end
 
     def write_object(oid, content)
         # example object_path = /Users/maria/rugit/.git/objects/cc/628ccd10742baea8241c5924df992b5c019f71

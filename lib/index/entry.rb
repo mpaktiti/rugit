@@ -1,7 +1,7 @@
 require "pathname"
 
 class Index
-    REGULAR_MODE = 0100644 # the leading 0 indicates an octal number
+    REGULAR_MODE = 0100644
     EXECUTABLE_MODE = 0100755
     MAX_PATH_SIZE = 0xfff
 
@@ -16,7 +16,7 @@ class Index
     Entry = Struct.new(*entry_fields) do
         def self.create(pathname, oid, stat)
             path = pathname.to_s
-            mode = stat.executable? ? EXECUTABLE_MODE : REGULAR_MODE
+            mode = Entry.mode_for_stat(stat)
             flags = [path.bytesize, MAX_PATH_SIZE].min
 
             Entry.new(
@@ -25,6 +25,10 @@ class Index
                 stat.dev, stat.ino, mode, stat.uid, stat.gid, stat.size,
                 oid, flags, path
             )
+        end
+
+        def self.mode_for_stat(stat)
+            stat.executable? ? EXECUTABLE_MODE : REGULAR_MODE
         end
 
         def self.parse(data)
@@ -47,6 +51,28 @@ class Index
 
         def basename
             Pathname.new(path).basename
+        end
+
+        def stat_match?(stat)
+            mode == Entry.mode_for_stat(stat) and (size == 0 or size == stat.size)
+        end
+
+        def times_match?(stat)
+            ctime == stat.ctime.to_i and ctime_nsec == stat.ctime.nsec and 
+            mtime == stat.mtime.to_i and mtime_nsec == stat.mtime.nsec
+        end
+
+        def update_stat(stat)
+            self.ctime      = stat.ctime.to_i
+            self.ctime_nsec = stat.ctime.nsec
+            self.mtime      = stat.mtime.to_i
+            self.mtime_nsec = stat.mtime.nsec
+            self.dev        = stat.dev
+            self.ino        = stat.ino
+            self.mode       = Entry.mode_for_stat(stat)
+            self.uid        = stat.uid
+            self.gid        = stat.gid
+            self.size       = stat.size
         end
 
     end

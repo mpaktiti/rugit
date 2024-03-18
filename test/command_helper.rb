@@ -81,4 +81,13 @@ module CommandHelper
     def mkdir(name)
         FileUtils.mkdir_p(repo_path.join(name))
     end
+
+    def touch(name)
+        FileUtils.touch(repo_path.join(name))
+    end
+
+    def delete(name)
+        FileUtils.rm_rf(repo_path.join(name))
+    end
+
 end

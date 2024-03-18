@@ -4,13 +4,19 @@ module Command
     class Status < Base
 
         def run
-            repo.index.load
-
+            @stats     = {}
+            @changed   = SortedSet.new
+            @changes   = Hash.new { |hash, key| hash[key] = Set.new }
             @untracked = SortedSet.new
 
-            scan_workspace
+            repo.index.load_for_update
 
-            @untracked.each { |path| puts "?? #{ path }" }
+            scan_workspace
+            detect_workspace_changes
+
+            repo.index.write_updates
+
+            print_results
 
             exit 0
         end
@@ -18,11 +24,45 @@ module Command
         def scan_workspace(prefix=nil)
             repo.workspace.list_dir(prefix).each do |path, stat|
                 if repo.index.tracked?(path)
+                    @stats[path] = stat if stat.file?
                     scan_workspace(path) if stat.directory?
                 elsif trackable_file?(path, stat)
                     path += File::SEPARATOR if stat.directory?
                     @untracked.add(path)
                 end
+            end
+        end
+
+        def detect_workspace_changes
+            repo.index.each_entry { |entry| check_index_entry(entry) }
+        end
+
+        def record_change(path, type)
+            @changed.add(path)
+            @changes[path].add(type)
+        end
+
+        def check_index_entry(entry)
+            stat = @stats[entry.path]
+
+            unless stat
+                return record_change(entry.path, :workspace_deleted)
+            end
+
+            unless entry.stat_match?(stat)
+                return record_change(entry.path, :workspace_modified)
+            end
+
+            return if entry.times_match?(stat)
+
+            data = repo.workspace.read_file(entry.path)
+            blob = Database::Blob.new(data)
+            oid = repo.database.hash_object(blob)
+
+            if entry.oid == oid
+                repo.index.update_entry_stat(entry, stat)
+            else
+                record_change(entry.path, :workspace_modified)
             end
         end
 
@@ -38,6 +78,27 @@ module Command
 
             [files, dirs].any? do |list|
                 list.any? { |item_path, item_stat| trackable_file?(item_path, item_stat) }
+            end
+        end
+
+        def status_for(path)
+            changes = @changes[path]
+
+            status = "  "
+            status = " D" if changes.include?(:workspace_deleted)
+            status = " M" if changes.include?(:workspace_modified)
+
+            status
+        end
+
+        def print_results
+            @changed.each do |path|
+                status = status_for(path)
+                puts "#{ status } #{ path }"
+            end
+
+            @untracked.each do |path|
+                puts "?? #{ path }"
             end
         end
 

@@ -152,4 +152,10 @@ class Index
     def tracked?(path)
         @entries.has_key?(path.to_s) or @parents.has_key?(path.to_s)
     end
+
+    def update_entry_stat(entry, stat)
+        entry.update_stat(stat)
+        @changed = true
+    end
+
 end

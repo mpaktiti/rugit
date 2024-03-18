@@ -68,4 +68,69 @@ describe Command::Status do
             ?? outer/
         STATUS
     end
+
+    describe "index/workspace changes" do
+        before do
+            write_file "1.txt", "one"
+            write_file "a/2.txt", "two"
+            write_file "a/b/3.txt", "three"
+            rugit_cmd "add", "."
+            commit "commit message"
+        end
+
+        it "prints nothing when no files are changed" do
+            assert_status ""
+        end
+
+        it "reports files with modified contents" do
+            write_file "1.txt", "changed"
+            write_file "a/2.txt", "modified"
+
+            assert_status <<~STATUS
+                \ M 1.txt
+                \ M a/2.txt
+            STATUS
+        end
+
+        it "reports files with changed modes" do
+            make_executable "a/2.txt"
+
+            assert_status <<~STATUS
+                \ M a/2.txt
+            STATUS
+        end
+
+        it "reports modified files with unchanged size" do
+            write_file "a/b/3.txt", "hello"
+
+            assert_status <<~STATUS
+                \ M a/b/3.txt
+            STATUS
+        end
+
+        it "prints nothing if a file is touched" do
+            touch "1.txt"
+
+            assert_status ""
+        end
+
+        it "reports deleted files" do
+            delete "a/2.txt"
+
+            assert_status <<~STATUS
+                \ D a/2.txt
+            STATUS
+        end
+
+        it "reports files in deleted directories" do
+            delete "a"
+
+            assert_status <<~STATUS
+                \ D a/2.txt
+                \ D a/b/3.txt
+            STATUS
+        end
+
+    end
+
 end
