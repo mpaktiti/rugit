@@ -4,10 +4,11 @@ module Command
     class Status < Base
 
         def run
-            @stats     = {}
-            @changed   = SortedSet.new
-            @changes   = Hash.new { |hash, key| hash[key] = Set.new }
-            @untracked = SortedSet.new
+            @stats             = {}
+            @changed           = SortedSet.new
+            @index_changes     = {}
+            @workspace_changes = {}
+            @untracked         = SortedSet.new
 
             repo.index.load_for_update
 
@@ -65,20 +66,20 @@ module Command
             end
         end
 
-        def record_change(path, type)
+        def record_change(path, set, type)
             @changed.add(path)
-            @changes[path].add(type)
+            set[path] = type
         end
 
         def check_index_against_workspace(entry)
             stat = @stats[entry.path]
 
             unless stat
-                return record_change(entry.path, :workspace_deleted)
+                return record_change(entry.path, @workspace_changes, :deleted)
             end
 
             unless entry.stat_match?(stat)
-                return record_change(entry.path, :workspace_modified)
+                return record_change(entry.path, @workspace_changes, :modified)
             end
 
             return if entry.times_match?(stat)
@@ -90,7 +91,7 @@ module Command
             if entry.oid == oid
                 repo.index.update_entry_stat(entry, stat)
             else
-                record_change(entry.path, :workspace_modified)
+                record_change(entry.path, @workspace_changes, :modified)
             end
         end
 
@@ -99,17 +100,17 @@ module Command
 
             if item
                 unless entry.mode == item.mode and entry.oid == item.oid
-                    record_change(entry.path, :index_modified)
+                    record_change(entry.path, @index_changes, :modified)
                 end
             else
-                record_change(entry.path, :index_added)
+                record_change(entry.path, @index_changes, :added)
             end
         end
 
         def collect_deleted_head_files
             @head_tree.each_key do |path|
                 unless repo.index.tracked_file?(path)
-                    record_change(path, :index_deleted)
+                    record_change(path, @index_changes, :deleted)
                 end
             end
         end
@@ -129,17 +130,15 @@ module Command
             end
         end
 
+        SHORT_STATUS = {
+            :added    => "A",
+            :deleted  => "D",
+            :modified => "M"
+        }
+
         def status_for(path)
-            changes = @changes[path]
-
-            left = " "
-            left = "A" if changes.include?(:index_added)
-            left = "M" if changes.include?(:index_modified)
-            left = "D" if changes.include?(:index_deleted)
-
-            right = " "
-            right = "D" if changes.include?(:workspace_deleted)
-            right = "M" if changes.include?(:workspace_modified)
+            left = SHORT_STATUS.fetch(@index_changes[path], " ")
+            right = SHORT_STATUS.fetch(@workspace_changes[path], " ")
 
             left + right
         end
