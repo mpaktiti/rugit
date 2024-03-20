@@ -133,4 +133,71 @@ describe Command::Status do
 
     end
 
+    describe "index/head changes" do
+        before do
+            write_file "1.txt", "one"
+            write_file "a/2.txt", "two"
+            write_file "a/b/3.txt", "three"
+            rugit_cmd "add", "."
+            commit "first commit"
+        end
+
+        it "reports a file added to a tracked directory" do
+            write_file "a/4.txt", "four"
+            rugit_cmd "add", "."
+
+            assert_status <<~STATUS
+                A  a/4.txt
+            STATUS
+        end
+
+        it "reports a file added to an untracked directory" do
+            write_file "d/e/5.txt", "five"
+            rugit_cmd "add", "."
+
+            assert_status <<~STATUS
+                A  d/e/5.txt
+            STATUS
+        end
+
+        it "reports modified modes" do
+            make_executable "1.txt"
+            rugit_cmd "add", "."
+
+            assert_status <<~STATUS
+                M  1.txt
+            STATUS
+        end
+
+        it "reports modified contents" do
+            write_file "a/b/3.txt", "changed"
+            rugit_cmd "add", "."
+
+            assert_status <<~STATUS
+                M  a/b/3.txt
+            STATUS
+        end
+
+        it "reports deleted files" do
+            delete "1.txt"
+            delete ".git/index"
+            rugit_cmd "add", "."
+
+            assert_status <<~STATUS
+                D  1.txt
+            STATUS
+        end
+
+        it "reports all deleted files inside directories" do
+            delete "a"
+            delete ".git/index"
+            rugit_cmd "add", "."
+
+            assert_status <<~STATUS
+                D  a/2.txt
+                D  a/b/3.txt
+            STATUS
+        end
+    end
+
 end

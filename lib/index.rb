@@ -149,8 +149,12 @@ class Index
         @lockfile.rollback
     end
 
+    def tracked_file?(path)
+        @entries.has_key?(path.to_s)
+    end
+
     def tracked?(path)
-        @entries.has_key?(path.to_s) or @parents.has_key?(path.to_s)
+        tracked_file?(path) or @parents.has_key?(path.to_s)
     end
 
     def update_entry_stat(entry, stat)

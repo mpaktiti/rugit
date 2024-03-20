@@ -12,7 +12,9 @@ module Command
             repo.index.load_for_update
 
             scan_workspace
-            detect_workspace_changes
+            load_head_tree
+            check_index_entries
+            collect_deleted_head_files
 
             repo.index.write_updates
 
@@ -33,8 +35,34 @@ module Command
             end
         end
 
-        def detect_workspace_changes
-            repo.index.each_entry { |entry| check_index_entry(entry) }
+        def load_head_tree
+            @head_tree = {}
+
+            head_oid = repo.refs.read_head
+            return unless head_oid
+
+            commit = repo.database.load(head_oid)
+            read_tree(commit.tree)
+        end
+
+        def read_tree(tree_oid, pathname = Pathname.new(""))
+            tree = repo.database.load(tree_oid)
+
+            tree.entries.each do |name, entry|
+                path = pathname.join(name)
+                if entry.tree?
+                    read_tree(entry.oid, path)
+                else
+                    @head_tree[path.to_s] = entry
+                end
+            end
+        end
+
+        def check_index_entries
+            repo.index.each_entry do |entry|
+                check_index_against_workspace(entry)
+                check_index_against_head_tree(entry)
+            end
         end
 
         def record_change(path, type)
@@ -42,7 +70,7 @@ module Command
             @changes[path].add(type)
         end
 
-        def check_index_entry(entry)
+        def check_index_against_workspace(entry)
             stat = @stats[entry.path]
 
             unless stat
@@ -66,6 +94,26 @@ module Command
             end
         end
 
+        def check_index_against_head_tree(entry)
+            item = @head_tree[entry.path]
+
+            if item
+                unless entry.mode == item.mode and entry.oid == item.oid
+                    record_change(entry.path, :index_modified)
+                end
+            else
+                record_change(entry.path, :index_added)
+            end
+        end
+
+        def collect_deleted_head_files
+            @head_tree.each_key do |path|
+                unless repo.index.tracked_file?(path)
+                    record_change(path, :index_deleted)
+                end
+            end
+        end
+
         def trackable_file?(path, stat)
             return false unless stat
 
@@ -84,11 +132,16 @@ module Command
         def status_for(path)
             changes = @changes[path]
 
-            status = "  "
-            status = " D" if changes.include?(:workspace_deleted)
-            status = " M" if changes.include?(:workspace_modified)
+            left = " "
+            left = "A" if changes.include?(:index_added)
+            left = "M" if changes.include?(:index_modified)
+            left = "D" if changes.include?(:index_deleted)
 
-            status
+            right = " "
+            right = "D" if changes.include?(:workspace_deleted)
+            right = "M" if changes.include?(:workspace_modified)
+
+            left + right
         end
 
         def print_results
