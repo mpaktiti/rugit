@@ -1,3 +1,5 @@
+require_relative "../color"
+
 module Command
     class Base
         attr_reader :status
@@ -30,6 +32,10 @@ module Command
 
         def repo
             @repo ||= Repository.new(Pathname.new(@dir).join(".git"))
+        end
+
+        def fmt(style, string)
+            @stdout.isatty? Color.format(style, string) : string
         end
     end
 end
