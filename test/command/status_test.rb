@@ -5,7 +5,7 @@ describe Command::Status do
     include CommandHelper
 
     def assert_status(output)
-        rugit_cmd "status"
+        rugit_cmd "status", "--porcelain"
         assert_stdout(output)
     end
 
