@@ -35,7 +35,7 @@ module Command
         end
 
         def fmt(style, string)
-            @stdout.isatty? Color.format(style, string) : string
+            @stdout.isatty ? Color.format(style, string) : string
         end
     end
 end
