@@ -8,6 +8,9 @@ require_relative "../repository"
 module Command
     class Diff < Base
 
+        NULL_OID  = "0" * 40
+        NULL_PATH = "/dev/null"
+
         def run
             repo.index.load
             @status = repo.status
@@ -15,6 +18,7 @@ module Command
             @status.workspace_changes.each do |path, state|
                 case state
                 when :modified then diff_file_modified(path)
+                when :deleted  then diff_file_deleted(path)
                 end
             end
 
@@ -47,6 +51,22 @@ module Command
             puts  oid_range
             puts "--- #{ a_path }"
             puts "+++ #{ b_path }"
+        end
+
+        def diff_file_deleted(path)
+            entry = repo.index.entry_for_path(path)
+            a_oid = entry.oid
+            a_mode = entry.mode.to_s(8)
+            a_path = Pathname.new("a").join(path)
+
+            b_oid = NULL_OID
+            b_path = Pathname.new("b").join(path)
+
+            puts "diff --rugit #{ a_path } #{ b_path }"
+            puts "deleted file mode #{ a_mode }"
+            puts "index #{ short a_oid }..#{ short b_oid }"
+            puts "--- #{ a_path }"
+            puts "+++ #{ NULL_PATH }"
         end
 
         def short(oid)
