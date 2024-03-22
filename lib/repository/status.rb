@@ -4,6 +4,7 @@ class Repository
     class Status
 
         attr_reader :changed,
+                    :stats,
                     :index_changes,
                     :workspace_changes,
                     :untracked_files
