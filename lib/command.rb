@@ -1,5 +1,6 @@
 require_relative "./command/add"
 require_relative "./command/commit"
+require_relative "./command/diff"
 require_relative "./command/init"
 require_relative "./command/status"
 
@@ -7,9 +8,10 @@ module Command
     Unknown = Class.new(StandardError)
 
     COMMANDS = {
-        "init" => Init,
-        "add" => Add,
+        "init"   => Init,
+        "add"    => Add,
         "commit" => Commit,
+        "diff"   => Diff,
         "status" => Status
     }
 

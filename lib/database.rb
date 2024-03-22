@@ -37,6 +37,10 @@ class Database
         @objects[oid] ||= read_object(oid)
     end
 
+    def short_oid(oid)
+        oid[0..6]
+    end
+
     private
 
     def serialize_object(object)
@@ -97,4 +101,5 @@ class Database
     def generate_temp_name
         "tmp_obj_#{ (1..6).map { TEMP_CHARS.sample }.join("") }"
     end
+
 end

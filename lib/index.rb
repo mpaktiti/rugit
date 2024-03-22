@@ -162,4 +162,8 @@ class Index
         @changed = true
     end
 
+    def entry_for_path(path)
+        @entries[path.to_s]
+    end
+
 end

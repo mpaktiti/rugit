@@ -12,7 +12,8 @@ Available commands:
 
 - `rugit init`
 - `rugit add`
+- `rugit diff`
 - `rugit commit`
-- `rugit status`
+- `rugit status` || `rugit status --porcelain`
 
 Run tests: `rake`
