@@ -4,11 +4,12 @@ class Repository
     class Status
 
         attr_reader :changed,
-                    :stats,
+                    :head_tree,
                     :index_changes,
-                    :workspace_changes,
-                    :untracked_files
-        
+                    :stats,
+                    :untracked_files,
+                    :workspace_changes
+
         def initialize(repository)
             @repo = repository
             @stats = {}
