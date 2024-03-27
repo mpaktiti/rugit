@@ -11,62 +11,72 @@ module Command
         NULL_OID  = "0" * 40
         NULL_PATH = "/dev/null"
 
+        Target = Struct.new(:path, :oid, :mode) do
+            def diff_path
+              mode ? path : NULL_PATH
+            end
+        end
+
         def run
             repo.index.load
             @status = repo.status
 
             @status.workspace_changes.each do |path, state|
                 case state
-                when :modified then diff_file_modified(path)
-                when :deleted  then diff_file_deleted(path)
+                when :modified then print_diff(from_index(path), from_file(path))
+                when :deleted  then print_diff(from_index(path), from_nothing(path))
                 end
             end
 
             exit 0
         end
 
-        def diff_file_modified(path)
-            entry = repo.index.entry_for_path(path)
-            a_oid = entry.oid
-            a_mode = entry.mode.to_s(8)
-            a_path = Pathname.new("a").join(path)
+        def print_diff(a, b)
+            return if a.oid == b.oid and a.mode == b.mode
 
-            blob = Database::Blob.new(repo.workspace.read_file(path))
-            b_oid = repo.database.hash_object(blob)
-            b_mode = Index::Entry.mode_for_stat(@status.stats[path]).to_s(8)
-            b_path = Pathname.new("b").join(path)
+            a.path = Pathname.new("a").join(a.path)
+            b_path = Pathname.new("b").join(b.path)
 
             puts "diff --rugit #{ a_path } #{ b_path }"
+            print_diff_mode(a, b)
+            print_diff_content(a, b)
+        end
 
-            unless a_mode == b_mode
+        def print_diff_mode(a, b)
+            if b.mode == nil
+                puts "deleted file mode #{ a_mode }"
+            elsif a.mode != b.mode
                 puts "old mode #{ a_mode }"
                 puts "new mode #{ b_mode }"
             end
+        end
 
+        def print_diff_content(a, b)
             return if a_oid == b_oid
 
             oid_range = "index #{ short a_oid }..#{ short b_oid }"
             oid_range.concat(" #{ a_mode }") if a_mode == b_mode
 
             puts  oid_range
-            puts "--- #{ a_path }"
-            puts "+++ #{ b_path }"
+            puts "--- #{ a.diff_path }"
+            puts "+++ #{ b.diff_path }"
         end
 
-        def diff_file_deleted(path)
+        def from_index(path)
             entry = repo.index.entry_for_path(path)
-            a_oid = entry.oid
-            a_mode = entry.mode.to_s(8)
-            a_path = Pathname.new("a").join(path)
+            Target.new(path, entry.oid, entry.mode.to_s(8))
+        end
 
-            b_oid = NULL_OID
-            b_path = Pathname.new("b").join(path)
+        def from_file(path)
+            blob = Database::Blob.new(repo.workspace.read_file(path))
+            oid = repo.database.hash_object(blob)
+            mode = Index::Entry.mode_for_stat(@status.stats[path]).to_s(8)
 
-            puts "diff --rugit #{ a_path } #{ b_path }"
-            puts "deleted file mode #{ a_mode }"
-            puts "index #{ short a_oid }..#{ short b_oid }"
-            puts "--- #{ a_path }"
-            puts "+++ #{ NULL_PATH }"
+            Target.new(path, oid, mode.to_s(8))
+        end
+
+        def from_nothing(path)
+            Target.new(path, NULL_OID, nil)
         end
 
         def short(oid)
